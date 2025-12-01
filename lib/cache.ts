@@ -1,14 +1,11 @@
-interface CacheItem<T> {
-  data: T;
-  timestamp: number;
-}
+import { CacheItem, CacheConfig } from "@/types";
 
 class Cache<T> {
   private cache = new Map<string, CacheItem<T>>();
   private duration: number;
 
-  constructor(durationMs: number = 60 * 60 * 1000) {
-    this.duration = durationMs;
+  constructor(config: CacheConfig = {}) {
+    this.duration = config.durationMs ?? 60 * 60 * 1000;
   }
 
   get(key: string): T | null {

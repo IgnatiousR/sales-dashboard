@@ -1,30 +1,6 @@
+import { AuthResponse, SalesResponse, SalesQueryParams } from "@/types";
+
 const API_BASE_URL = "https://autobizz-425913.uc.r.appspot.com";
-
-export interface AuthResponse {
-  token: string;
-  expire: number;
-}
-
-export interface SalesResponse {
-  results: {
-    TotalSales: Array<{
-      day: string;
-      totalSale: number;
-    }>;
-    Sales: Array<{
-      _id: string;
-      date: string;
-      price: number;
-      customerEmail: string;
-      customerPhone: string;
-      __v: number;
-    }>;
-  };
-  pagination: {
-    before: string;
-    after: string;
-  };
-}
 
 export const getAuthToken = async (): Promise<string> => {
   const response = await fetch(`${API_BASE_URL}/getAuthorize`, {
@@ -43,17 +19,7 @@ export const getAuthToken = async (): Promise<string> => {
 
 export const fetchSalesData = async (
   token: string,
-  params: {
-    startDate?: string;
-    endDate?: string;
-    priceMin?: string;
-    email?: string;
-    phone?: string;
-    sortBy?: string;
-    sortOrder?: string;
-    after?: string;
-    before?: string;
-  }
+  params: SalesQueryParams
 ): Promise<SalesResponse> => {
   const searchParams = new URLSearchParams();
 
