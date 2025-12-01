@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { CacheItem, Filters, Sale, SalesResponse, TotalSale } from "@/types";
 import StatsCards from "./StatsCards";
-import FiltersSection from "./FilterSection";
+import FiltersSection from "./FiltersSection";
 import SalesChart from "./SalesChart";
 import SalesTable from "./SalesTable";
 
@@ -44,9 +44,16 @@ const tokenCache = new Cache<string>(60 * 60 * 1000);
 const dataCache = new Cache<SalesResponse>(60 * 60 * 1000);
 
 const getAuthToken = async (): Promise<string> => {
+  // Check cache first
   const cachedToken = tokenCache.get(TOKEN_CACHE_KEY);
-  if (cachedToken) return cachedToken;
+  if (cachedToken) {
+    console.log("✅ Using cached token:", cachedToken);
+    console.log("📋 Token type:", typeof cachedToken);
+    console.log("📋 Token length:", cachedToken.length);
+    return cachedToken;
+  }
 
+  console.log("🔄 Fetching new token from server...");
   const response = await fetch(`${API_BASE_URL}/getAuthorize`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -56,28 +63,52 @@ const getAuthToken = async (): Promise<string> => {
   if (!response.ok) throw new Error("Authorization failed");
 
   const data = await response.json();
+  console.log("✅ New token received:", data.token);
+  console.log("📋 Token type:", typeof data.token);
+  console.log("📋 Token length:", data.token.length);
+  console.log("⏰ Token cached for 1 hour");
   tokenCache.set(TOKEN_CACHE_KEY, data.token);
   return data.token;
 };
 
 const fetchSalesData = async (token: string, params: Partial<Filters>): Promise<SalesResponse> => {
   const searchParams = new URLSearchParams();
+
+  // Always include required params (even if empty)
   Object.entries(params).forEach(([key, value]) => {
     searchParams.append(key, value || "");
   });
 
-  const response = await fetch(`${API_BASE_URL}/sales?${searchParams}`, {
+  const url = `${API_BASE_URL}/sales?${searchParams}`;
+  console.log("🔍 Fetching:", url);
+  console.log("🔑 Using token:", token);
+
+  const response = await fetch(url, {
     headers: {
       "X-AUTOBIZZ-TOKEN": token,
       "Content-Type": "application/json",
     },
   });
 
+  console.log("📡 Response status:", response.status);
+
   if (!response.ok) {
-    throw new Error(`Failed to fetch sales data: ${response.status}`);
+    const errorText = await response.text();
+    console.error("❌ Error response:", errorText);
+    throw new Error(`Failed to fetch sales data: ${response.status} ${errorText}`);
   }
 
-  return response.json();
+  const data = await response.json();
+  console.log("✅ Data received:", {
+    totalSales: data.results?.TotalSales?.length || 0,
+    sales: data.results?.Sales?.length || 0,
+    hasBefore: !!data.pagination?.before,
+    hasAfter: !!data.pagination?.after,
+    beforeToken: data.pagination?.before || "none",
+    afterToken: data.pagination?.after || "none",
+  });
+
+  return data;
 };
 
 const getCacheKey = (filters: Partial<Filters>): string => JSON.stringify(filters);
@@ -109,15 +140,21 @@ export default function SalesDashboard() {
   const [sortBy, setSortBy] = useState("date");
   const [sortOrder, setSortOrder] = useState("asc");
 
+  const isDateRangeValid = useMemo(() => {
+    return !startDate || !endDate || startDate <= endDate;
+  }, [startDate, endDate]);
+
   // Get authorization token on mount
   useEffect(() => {
     const authorize = async () => {
       try {
+        console.log("🔐 Initializing authorization...");
         const token = await getAuthToken();
+        console.log("✅ Authorization successful. Token:", token);
         setAuthToken(token);
       } catch (err) {
         setError("Failed to authorize. Please refresh the page.");
-        console.error("Auth error:", err);
+        console.error("❌ Auth error:", err);
       }
     };
     authorize();
@@ -126,7 +163,17 @@ export default function SalesDashboard() {
   // Fetch Sales Data
   const fetchSales = useCallback(
     async (direction: "next" | "prev" | null = null) => {
-      if (!authToken) return;
+      if (!authToken) {
+        console.log("⚠️ No auth token available yet");
+        return;
+      }
+
+      if (!isDateRangeValid) {
+        setError(
+          "Please select a valid date range (start date must be before or equal to end date)"
+        );
+        return;
+      }
 
       setLoading(true);
       setError(null);
@@ -147,6 +194,13 @@ export default function SalesDashboard() {
       const cached = dataCache.get(cacheKey);
 
       if (cached) {
+        console.log("📦 Loading from cache");
+        console.log("📊 Cached data:", {
+          totalSalesDays: cached.results?.TotalSales?.length || 0,
+          salesRecords: cached.results?.Sales?.length || 0,
+          hasBefore: !!cached.pagination?.before,
+          hasAfter: !!cached.pagination?.after,
+        });
         setTotalSalesData(cached.results?.TotalSales || []);
         setSalesData(cached.results?.Sales || []);
         setBeforeToken(cached.pagination?.before || "");
@@ -156,9 +210,24 @@ export default function SalesDashboard() {
       }
 
       try {
+        console.log("🔄 Fetching sales data with filters:", {
+          startDate,
+          endDate,
+          priceMin,
+          email,
+          phone,
+          sortBy,
+          sortOrder,
+          direction,
+          paginationToken:
+            direction === "next" ? afterToken : direction === "prev" ? beforeToken : "none",
+        });
+
         const data = await fetchSalesData(authToken, filters);
 
+        // Validate response structure
         if (!data || !data.results) {
+          console.error("❌ Invalid response structure:", data);
           throw new Error("Invalid response from server");
         }
 
@@ -167,15 +236,29 @@ export default function SalesDashboard() {
         const beforePagination = data.pagination?.before || "";
         const afterPagination = data.pagination?.after || "";
 
+        console.log("📊 Setting data:", {
+          totalSalesDays: totalSales.length,
+          salesRecords: sales.length,
+          beforeToken: beforePagination ? "present" : "none",
+          afterToken: afterPagination ? "present" : "none",
+        });
+
         setTotalSalesData(totalSales);
         setSalesData(sales);
         setBeforeToken(beforePagination);
         setAfterToken(afterPagination);
 
+        // Cache the data
         dataCache.set(cacheKey, data);
+        console.log("💾 Data cached successfully");
+
+        // Log if no results found
+        if (totalSales.length === 0 && sales.length === 0) {
+          console.log("ℹ️ No results found for current filters");
+        }
       } catch (err) {
         setError("Failed to load sales data. Please try again.");
-        console.error("Fetch error:", err);
+        console.error("❌ Fetch error:", err);
       } finally {
         setLoading(false);
       }
@@ -191,12 +274,14 @@ export default function SalesDashboard() {
       sortOrder,
       afterToken,
       beforeToken,
+      isDateRangeValid,
     ]
   );
 
   // Initial load and filter changes
   useEffect(() => {
     if (authToken) {
+      console.log("🔄 Filter or sort changed, resetting pagination and fetching data");
       setCurrentPage(1);
       setBeforeToken("");
       setAfterToken("");
@@ -219,15 +304,21 @@ export default function SalesDashboard() {
 
   const handleNext = useCallback(() => {
     if (afterToken) {
+      console.log("➡️ Moving to next page, using after token:", afterToken);
       setCurrentPage((p) => p + 1);
       fetchSales("next");
+    } else {
+      console.log("⚠️ No next page available");
     }
   }, [afterToken, fetchSales]);
 
   const handlePrevious = useCallback(() => {
     if (beforeToken && currentPage > 1) {
+      console.log("⬅️ Moving to previous page, using before token:", beforeToken);
       setCurrentPage((p) => p - 1);
       fetchSales("prev");
+    } else {
+      console.log("⚠️ No previous page available or already on first page");
     }
   }, [beforeToken, currentPage, fetchSales]);
 
@@ -282,6 +373,8 @@ export default function SalesDashboard() {
           onEmailChange={setEmail}
           onPhoneChange={setPhone}
           onRefresh={() => fetchSales()}
+          isDateRangeValid={isDateRangeValid}
+          loading={loading}
         />
 
         {/* Chart Section */}
