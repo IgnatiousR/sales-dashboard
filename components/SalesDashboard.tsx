@@ -13,12 +13,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import {
-  ChevronUp,
-  ChevronDown,
-  ChevronsUpDown,
-  ChevronLeft,
-  ChevronRight,
-  Loader2,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  ChevronsUpDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Loader2Icon,
 } from "lucide-react";
 
 const API_BASE = "https://autobizz-425913.uc.r.appspot.com";
@@ -278,12 +278,12 @@ export default function SalesDashboard() {
 
   const SortIcon = ({ column }: { column: string }) => {
     if (sortBy !== column) {
-      return <ChevronsUpDown className="w-4 h-4 text-gray-400" />;
+      return <ChevronsUpDownIcon className="w-4 h-4 text-gray-400" />;
     }
     return sortOrder === "asc" ? (
-      <ChevronUp className="w-4 h-4 text-blue-600" />
+      <ChevronUpIcon className="w-4 h-4 text-blue-600" />
     ) : (
-      <ChevronDown className="w-4 h-4 text-blue-600" />
+      <ChevronDownIcon className="w-4 h-4 text-blue-600" />
     );
   };
 
@@ -308,7 +308,7 @@ export default function SalesDashboard() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
+          <Loader2Icon className="w-8 h-8 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-gray-600">Authenticating...</p>
         </div>
       </div>
@@ -358,6 +358,7 @@ export default function SalesDashboard() {
               <input
                 type="date"
                 value={startDate}
+                max={endDate}
                 onChange={(e) => {
                   setStartDate(e.target.value);
                   handleFilterChange();
@@ -372,6 +373,7 @@ export default function SalesDashboard() {
               <input
                 type="date"
                 value={endDate}
+                min={endDate}
                 onChange={(e) => {
                   setEndDate(e.target.value);
                   handleFilterChange();
@@ -440,7 +442,7 @@ export default function SalesDashboard() {
           </h2>
           {salesLoading && totalSalesData.length === 0 ? (
             <div className="h-64 sm:h-80 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <Loader2Icon className="w-8 h-8 animate-spin text-blue-600" />
             </div>
           ) : totalSalesData.length > 0 ? (
             <ResponsiveContainer width="100%" height={window.innerWidth < 640 ? 250 : 320}>
@@ -496,7 +498,7 @@ export default function SalesDashboard() {
 
           {salesLoading ? (
             <div className="h-64 sm:h-96 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <Loader2Icon className="w-8 h-8 animate-spin text-blue-600" />
             </div>
           ) : salesData.length > 0 ? (
             <>
@@ -539,10 +541,10 @@ export default function SalesDashboard() {
                           <SortIcon column="price" />
                         </button>
                       </th>
-                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
                         Customer Email
                       </th>
-                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 tracking-wider">
                         Phone Number
                       </th>
                     </tr>
@@ -584,7 +586,7 @@ export default function SalesDashboard() {
                     disabled={!paginationData.before}
                     className="inline-flex items-center gap-1 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
-                    <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <ChevronLeftIcon className="w-3 h-3 sm:w-4 sm:h-4" />
                     <span className="hidden sm:inline">Previous</span>
                     <span className="sm:hidden">Prev</span>
                   </button>
@@ -595,7 +597,7 @@ export default function SalesDashboard() {
                   >
                     <span className="hidden sm:inline">Next</span>
                     <span className="sm:hidden">Next</span>
-                    <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
+                    <ChevronRightIcon className="w-3 h-3 sm:w-4 sm:h-4" />
                   </button>
                 </div>
               </div>
